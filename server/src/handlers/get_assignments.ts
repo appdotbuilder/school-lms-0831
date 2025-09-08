@@ -1,8 +1,18 @@
+import { db } from '../db';
+import { assignmentsTable } from '../db/schema';
 import { type GetAssignmentsInput, type Assignment } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function getAssignments(input: GetAssignmentsInput): Promise<Assignment[]> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is fetching all assignments for a specific course.
-  // Used by students to view assignments for enrolled courses and by teachers to manage their assignments.
-  return [];
-}
+export const getAssignments = async (input: GetAssignmentsInput): Promise<Assignment[]> => {
+  try {
+    const results = await db.select()
+      .from(assignmentsTable)
+      .where(eq(assignmentsTable.course_id, input.course_id))
+      .execute();
+
+    return results;
+  } catch (error) {
+    console.error('Failed to get assignments:', error);
+    throw error;
+  }
+};

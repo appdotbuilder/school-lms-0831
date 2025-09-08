@@ -1,8 +1,23 @@
+import { db } from '../db';
+import { assignmentSubmissionsTable } from '../db/schema';
 import { type GetStudentSubmissionsInput, type AssignmentSubmission } from '../schema';
+import { eq } from 'drizzle-orm';
 
 export async function getStudentSubmissions(input: GetStudentSubmissionsInput): Promise<AssignmentSubmission[]> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is fetching all submissions made by a specific student.
-  // Used by students to view their submitted assignments and grades.
-  return [];
+  try {
+    // Query all submissions for the specific student
+    const results = await db.select()
+      .from(assignmentSubmissionsTable)
+      .where(eq(assignmentSubmissionsTable.student_id, input.student_id))
+      .execute();
+
+    // Convert numeric fields back to numbers and ensure proper typing
+    return results.map(submission => ({
+      ...submission,
+      grade: submission.grade !== null ? parseFloat(submission.grade.toString()) : null
+    }));
+  } catch (error) {
+    console.error('Failed to fetch student submissions:', error);
+    throw error;
+  }
 }

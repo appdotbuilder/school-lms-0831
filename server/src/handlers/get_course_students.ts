@@ -1,9 +1,21 @@
+import { db } from '../db';
+import { usersTable, enrollmentsTable } from '../db/schema';
 import { type GetCourseStudentsInput, type User } from '../schema';
+import { eq } from 'drizzle-orm';
 
 export async function getCourseStudents(input: GetCourseStudentsInput): Promise<User[]> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is fetching all students enrolled in a specific course.
-  // Joins enrollments and users tables to get student information for a course.
-  // Used by teachers to view their course enrollment and by administrators for oversight.
-  return [];
+  try {
+    // Join enrollments and users tables to get student information for a course
+    const results = await db.select()
+      .from(enrollmentsTable)
+      .innerJoin(usersTable, eq(enrollmentsTable.student_id, usersTable.id))
+      .where(eq(enrollmentsTable.course_id, input.course_id))
+      .execute();
+
+    // Extract user data from joined results
+    return results.map(result => result.users);
+  } catch (error) {
+    console.error('Failed to get course students:', error);
+    throw error;
+  }
 }

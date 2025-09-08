@@ -1,17 +1,47 @@
+import { db } from '../db';
+import { assignmentsTable } from '../db/schema';
 import { type UpdateAssignmentInput, type Assignment } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function updateAssignment(input: UpdateAssignmentInput): Promise<Assignment> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is updating an existing assignment.
-  // Should validate the assignment exists and the user has permission to modify it.
-  // Used by teachers to edit assignment details, descriptions, and due dates.
-  return Promise.resolve({
-    id: input.id,
-    course_id: 0, // Will be fetched from existing record
-    title: input.title || 'Placeholder Assignment',
-    description: input.description || null,
-    due_date: input.due_date || null,
-    created_at: new Date(), // Placeholder date
-    updated_at: new Date() // Placeholder date
-  } as Assignment);
-}
+export const updateAssignment = async (input: UpdateAssignmentInput): Promise<Assignment> => {
+  try {
+    // Check if assignment exists
+    const existingAssignment = await db.select()
+      .from(assignmentsTable)
+      .where(eq(assignmentsTable.id, input.id))
+      .execute();
+
+    if (existingAssignment.length === 0) {
+      throw new Error(`Assignment with id ${input.id} not found`);
+    }
+
+    // Build update object with only provided fields
+    const updateData: any = {
+      updated_at: new Date()
+    };
+
+    if (input.title !== undefined) {
+      updateData.title = input.title;
+    }
+
+    if (input.description !== undefined) {
+      updateData.description = input.description;
+    }
+
+    if (input.due_date !== undefined) {
+      updateData.due_date = input.due_date;
+    }
+
+    // Update the assignment
+    const result = await db.update(assignmentsTable)
+      .set(updateData)
+      .where(eq(assignmentsTable.id, input.id))
+      .returning()
+      .execute();
+
+    return result[0];
+  } catch (error) {
+    console.error('Assignment update failed:', error);
+    throw error;
+  }
+};

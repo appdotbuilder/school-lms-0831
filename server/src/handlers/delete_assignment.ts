@@ -1,9 +1,25 @@
+import { db } from '../db';
+import { assignmentsTable, assignmentSubmissionsTable } from '../db/schema';
 import { type DeleteAssignmentInput } from '../schema';
+import { eq } from 'drizzle-orm';
 
 export async function deleteAssignment(input: DeleteAssignmentInput): Promise<{ success: boolean }> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is deleting an assignment from the database.
-  // Should handle cascading deletes for related submissions and validate permissions.
-  // Used by teachers to remove assignments from their courses.
-  return Promise.resolve({ success: true });
+  try {
+    // First, delete all related assignment submissions (cascading delete)
+    await db.delete(assignmentSubmissionsTable)
+      .where(eq(assignmentSubmissionsTable.assignment_id, input.id))
+      .execute();
+
+    // Then delete the assignment itself
+    const result = await db.delete(assignmentsTable)
+      .where(eq(assignmentsTable.id, input.id))
+      .returning()
+      .execute();
+
+    // Return success based on whether any rows were affected
+    return { success: result.length > 0 };
+  } catch (error) {
+    console.error('Assignment deletion failed:', error);
+    throw error;
+  }
 }

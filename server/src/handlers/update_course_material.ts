@@ -1,17 +1,47 @@
+import { db } from '../db';
+import { courseMaterialsTable } from '../db/schema';
 import { type UpdateCourseMaterialInput, type CourseMaterial } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function updateCourseMaterial(input: UpdateCourseMaterialInput): Promise<CourseMaterial> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is updating existing course material.
-  // Should validate the material exists and the user has permission to modify it.
-  // Used by teachers to edit and update their course materials.
-  return Promise.resolve({
-    id: input.id,
-    course_id: 0, // Will be fetched from existing record
-    title: input.title || 'Placeholder Material',
-    content: input.content || null,
-    file_url: input.file_url || null,
-    created_at: new Date(), // Placeholder date
-    updated_at: new Date() // Placeholder date
-  } as CourseMaterial);
-}
+export const updateCourseMaterial = async (input: UpdateCourseMaterialInput): Promise<CourseMaterial> => {
+  try {
+    // First, verify the course material exists
+    const existingMaterial = await db.select()
+      .from(courseMaterialsTable)
+      .where(eq(courseMaterialsTable.id, input.id))
+      .execute();
+
+    if (existingMaterial.length === 0) {
+      throw new Error(`Course material with id ${input.id} not found`);
+    }
+
+    // Prepare update data - only include fields that are provided
+    const updateData: Partial<typeof courseMaterialsTable.$inferInsert> = {
+      updated_at: new Date()
+    };
+
+    if (input.title !== undefined) {
+      updateData.title = input.title;
+    }
+
+    if (input.content !== undefined) {
+      updateData.content = input.content;
+    }
+
+    if (input.file_url !== undefined) {
+      updateData.file_url = input.file_url;
+    }
+
+    // Update the course material
+    const result = await db.update(courseMaterialsTable)
+      .set(updateData)
+      .where(eq(courseMaterialsTable.id, input.id))
+      .returning()
+      .execute();
+
+    return result[0];
+  } catch (error) {
+    console.error('Course material update failed:', error);
+    throw error;
+  }
+};

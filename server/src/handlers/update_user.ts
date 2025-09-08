@@ -1,17 +1,48 @@
+import { db } from '../db';
+import { usersTable } from '../db/schema';
 import { type UpdateUserInput, type User } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function updateUser(input: UpdateUserInput): Promise<User> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is updating an existing user's information in the database.
-  // Should validate the user exists, update only provided fields, and return the updated user.
-  // Used by administrators to modify user details and roles.
-  return Promise.resolve({
-    id: input.id,
-    email: input.email || 'placeholder@example.com',
-    first_name: input.first_name || 'Placeholder',
-    last_name: input.last_name || 'User',
-    role: input.role || 'student',
-    created_at: new Date(), // Placeholder date
-    updated_at: new Date() // Placeholder date
-  } as User);
-}
+export const updateUser = async (input: UpdateUserInput): Promise<User> => {
+  try {
+    // First, check if the user exists
+    const existingUsers = await db.select()
+      .from(usersTable)
+      .where(eq(usersTable.id, input.id))
+      .execute();
+
+    if (existingUsers.length === 0) {
+      throw new Error(`User with id ${input.id} not found`);
+    }
+
+    // Build the update object with only provided fields
+    const updateData: any = {
+      updated_at: new Date()
+    };
+
+    if (input.email !== undefined) {
+      updateData.email = input.email;
+    }
+    if (input.first_name !== undefined) {
+      updateData.first_name = input.first_name;
+    }
+    if (input.last_name !== undefined) {
+      updateData.last_name = input.last_name;
+    }
+    if (input.role !== undefined) {
+      updateData.role = input.role;
+    }
+
+    // Update the user
+    const result = await db.update(usersTable)
+      .set(updateData)
+      .where(eq(usersTable.id, input.id))
+      .returning()
+      .execute();
+
+    return result[0];
+  } catch (error) {
+    console.error('User update failed:', error);
+    throw error;
+  }
+};

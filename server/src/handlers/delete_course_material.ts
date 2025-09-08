@@ -1,9 +1,28 @@
+import { db } from '../db';
+import { courseMaterialsTable } from '../db/schema';
 import { type DeleteCourseMaterialInput } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function deleteCourseMaterial(input: DeleteCourseMaterialInput): Promise<{ success: boolean }> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is deleting course material from the database.
-  // Should validate the material exists and the user has permission to delete it.
-  // Used by teachers to remove outdated or incorrect materials from their courses.
-  return Promise.resolve({ success: true });
-}
+export const deleteCourseMaterial = async (input: DeleteCourseMaterialInput): Promise<{ success: boolean }> => {
+  try {
+    // Verify the course material exists before attempting to delete
+    const existingMaterial = await db.select()
+      .from(courseMaterialsTable)
+      .where(eq(courseMaterialsTable.id, input.id))
+      .execute();
+
+    if (existingMaterial.length === 0) {
+      throw new Error(`Course material with id ${input.id} not found`);
+    }
+
+    // Delete the course material
+    const result = await db.delete(courseMaterialsTable)
+      .where(eq(courseMaterialsTable.id, input.id))
+      .execute();
+
+    return { success: true };
+  } catch (error) {
+    console.error('Course material deletion failed:', error);
+    throw error;
+  }
+};

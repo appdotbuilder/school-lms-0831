@@ -1,18 +1,32 @@
+import { db } from '../db';
+import { assignmentSubmissionsTable } from '../db/schema';
 import { type GradeSubmissionInput, type AssignmentSubmission } from '../schema';
+import { eq } from 'drizzle-orm';
 
 export async function gradeSubmission(input: GradeSubmissionInput): Promise<AssignmentSubmission> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is grading a student's assignment submission.
-  // Should validate the submission exists and the user has permission to grade it.
-  // Used by teachers to grade student submissions and provide feedback.
-  return Promise.resolve({
-    id: input.id,
-    assignment_id: 0, // Will be fetched from existing record
-    student_id: 0, // Will be fetched from existing record
-    content: 'Placeholder content',
-    file_url: null,
-    submitted_at: new Date(), // Placeholder date
-    grade: input.grade,
-    graded_at: new Date() // Current timestamp
-  } as AssignmentSubmission);
+  try {
+    // Update the submission with the grade and graded_at timestamp
+    const result = await db.update(assignmentSubmissionsTable)
+      .set({
+        grade: input.grade,
+        graded_at: new Date()
+      })
+      .where(eq(assignmentSubmissionsTable.id, input.id))
+      .returning()
+      .execute();
+
+    if (result.length === 0) {
+      throw new Error(`Assignment submission with id ${input.id} not found`);
+    }
+
+    // Convert numeric fields back to numbers before returning
+    const submission = result[0];
+    return {
+      ...submission,
+      grade: submission.grade !== null ? parseFloat(submission.grade.toString()) : null
+    };
+  } catch (error) {
+    console.error('Grade submission failed:', error);
+    throw error;
+  }
 }

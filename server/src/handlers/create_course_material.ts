@@ -1,17 +1,35 @@
+import { db } from '../db';
+import { courseMaterialsTable, coursesTable } from '../db/schema';
 import { type CreateCourseMaterialInput, type CourseMaterial } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function createCourseMaterial(input: CreateCourseMaterialInput): Promise<CourseMaterial> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is creating new learning material for a course.
-  // Should validate that the course exists and the user has permission to add materials.
-  // Used by teachers to upload and manage learning materials within their courses.
-  return Promise.resolve({
-    id: 0, // Placeholder ID
-    course_id: input.course_id,
-    title: input.title,
-    content: input.content,
-    file_url: input.file_url,
-    created_at: new Date(), // Placeholder date
-    updated_at: new Date() // Placeholder date
-  } as CourseMaterial);
-}
+export const createCourseMaterial = async (input: CreateCourseMaterialInput): Promise<CourseMaterial> => {
+  try {
+    // First, verify that the course exists
+    const course = await db.select()
+      .from(coursesTable)
+      .where(eq(coursesTable.id, input.course_id))
+      .limit(1)
+      .execute();
+
+    if (course.length === 0) {
+      throw new Error(`Course with ID ${input.course_id} does not exist`);
+    }
+
+    // Insert course material record
+    const result = await db.insert(courseMaterialsTable)
+      .values({
+        course_id: input.course_id,
+        title: input.title,
+        content: input.content,
+        file_url: input.file_url
+      })
+      .returning()
+      .execute();
+
+    return result[0];
+  } catch (error) {
+    console.error('Course material creation failed:', error);
+    throw error;
+  }
+};
